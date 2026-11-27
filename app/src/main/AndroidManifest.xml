@@ -11,8 +11,6 @@
     <!-- Google Drive სინქრონიზაცია — ინტერნეტი -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- APK-ის დაყენება (აპის განახლება) -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- allowBackup=false: თავიდან დაყენებისას აპი ცარიელი იწყება,
          Android-ის ბექაფი ძველ ნოუტებს არ აბრუნებს.

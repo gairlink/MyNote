@@ -62,6 +62,15 @@ class MainActivity : Activity() {
         }
         // პაროლი აღარ გამოიყენება პროგრამაში შესასვლელად — აპი იხსნება პირდაპირ
         showHomePage()
+        // ვიჯეტიდან გახსნა: კონკრეტული ნოუტი ან ახალი ნოუტის შექმნა
+        when (intent.getStringExtra("widgetAction")) {
+            "open" -> {
+                val nid = intent.getIntExtra("noteId", -1)
+                val n = notes.find { it.id == nid }
+                if (n != null) showView(n)
+            }
+            "create" -> showCreatePicker()
+        }
         // Google Drive: თუ შესულია, გახსნაზე თავისით სინქრონიზაცია
         // ჩუმი სინქრონი — ეკრანს არ ვეხებით: თუ Drive-ში უფრო ახალია,
         // applySyncedData თავისით განაახლებს იმ გვერდს, სადაც ხარ

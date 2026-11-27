@@ -15,8 +15,22 @@ object Lang {
         }
         return m[key] ?: ka[key] ?: key
     }
+
+    // ვიჯეტებისთვის — Context-ით, MainActivity-ის გარეშე
+    fun strCtx(context: android.content.Context, key: String): String {
+        val c = context.getSharedPreferences("mynote", 0).getString("languageCode", "en") ?: "en"
+        val m = when (c) {
+            "en" -> en
+            "it" -> it
+            "ru" -> ru
+            "tr" -> tr
+            else -> ka
+        }
+        return m[key] ?: ka[key] ?: key
+    }
     private val ka = mapOf(
         "app" to "MyNote",
+        "widgetEmpty" to "ნოუტები არ არის",
         "search" to "ძებნა...",
         "newNote" to "ახალი ჩანაწერი",
         "backToPaper" to "უკან",
@@ -182,6 +196,7 @@ object Lang {
     )
     private val en = mapOf(
         "app" to "MyNote",
+        "widgetEmpty" to "No notes yet",
         "search" to "Search...",
         "newNote" to "New note",
         "backToPaper" to "Back",
@@ -347,6 +362,7 @@ object Lang {
     )
     private val it = mapOf(
         "app" to "MyNote",
+        "widgetEmpty" to "Ancora nessuna nota",
         "search" to "Cerca...",
         "newNote" to "Nuova nota",
         "backToPaper" to "Indietro",
@@ -512,6 +528,7 @@ object Lang {
     )
     private val ru = mapOf(
         "app" to "MyNote",
+        "widgetEmpty" to "Заметок пока нет",
         "search" to "Поиск...",
         "newNote" to "Новая заметка",
         "backToPaper" to "Назад",
@@ -677,6 +694,7 @@ object Lang {
     )
     private val tr = mapOf(
         "app" to "MyNote",
+        "widgetEmpty" to "Henüz not yok",
         "search" to "Ara...",
         "newNote" to "Yeni not",
         "backToPaper" to "Geri",
