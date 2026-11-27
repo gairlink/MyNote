@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.MyNote" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:colorPrimary">#6C5CE7</item>
+        <item name="android:colorPrimaryDark">#5A4BD1</item>
+        <item name="android:colorAccent">#6C5CE7</item>
+        <item name="android:windowBackground">#F8F7FF</item>
+    </style>
+</resources>
