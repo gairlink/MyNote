@@ -11,6 +11,9 @@
     <!-- Google Drive სინქრონიზაცია — ინტერნეტი -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- APK-ის (განახლების) დაყენება — ამის გარეშე სისტემა ამბობს „Need to declare an..."
+         და განახლება ვერ იწყება. Play Store-ის გარეშე განახლებისთვის აუცილებელია. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- allowBackup=false: თავიდან დაყენებისას აპი ცარიელი იწყება,
          Android-ის ბექაფი ძველ ნოუტებს არ აბრუნებს.
@@ -34,10 +37,10 @@
             </intent-filter>
         </activity>
 
-        <!-- ვიჯეტი: ერთი ნოუტი 6×2 — ფართე, დაბალი, ჩარჩოს გარეშე -->
+        <!-- ვიჯეტი: ერთი ნოუტი 5×2 — ფართე, დაბალი, ჩარჩოს გარეშე -->
         <receiver
             android:name=".NoteSingleWidgetProvider"
-            android:label="MyNote 6×2"
+            android:label="MyNote"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -50,7 +53,7 @@
         <!-- ვიჯეტი: ერთი ნოუტი 3×3 — კვადრატი, ჩარჩოს გარეშე -->
         <receiver
             android:name=".NoteSingleWideWidgetProvider"
-            android:label="MyNote 3×3"
+            android:label="MyNote"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

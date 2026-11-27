@@ -101,6 +101,7 @@ object AppUpdate {
     }
 
     private fun showDialog(a: MainActivity, apkUrl: String, notes: String) {
+        try {
         var msg = Lang.str(a, "updateMsg")
         if (notes.isNotEmpty()) msg += "\n\n" + notes
         AlertDialog.Builder(a)
@@ -109,20 +110,27 @@ object AppUpdate {
             .setPositiveButton(Lang.str(a, "updateNow")) { _, _ -> startDownload(a, apkUrl) }
             .setNegativeButton(Lang.str(a, "later"), null)
             .show()
+        } catch (e: Exception) { }
     }
 
     private fun startDownload(a: MainActivity, apkUrl: String) {
         // Android 8+: APK-ის დაყენებას „უცნობი წყაროები" სჭირდება.
         // თუ არაა დაშვებული — ბმულს ვიმახსოვრებთ, პარამეტრები იხსნება,
         // უკან დაბრუნებისას onResume-ი ჩამოტვირთვას თავისით იწყებს.
+        // ⚠️ ადრე ეს ადგილი try-catch-ის გარეშე იყო — პარამეტრების გახსნისას
+        // ნებისმიერი შეცდომა აპს იქრეშავდა. ახლა ყველაფერი დაცულია.
+        try {
         if (!canInstall(a)) {
             pendingApkUrl = apkUrl
             Toast.makeText(a, Lang.str(a, "allowUnknownSources"), Toast.LENGTH_LONG).show()
-            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + a.packageName))
-            a.startActivity(intent)
+            try {
+                val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + a.packageName))
+                a.startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(a, Lang.str(a, "updateFailed") + " " + (e.message ?: "?"), Toast.LENGTH_LONG).show()
+            }
             return
         }
-        try {
             val dm = a.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
             val req = DownloadManager.Request(Uri.parse(apkUrl))
                 .setTitle("MyNote")
@@ -168,7 +176,7 @@ object AppUpdate {
                 a.applicationContext.registerReceiver(receiver, filter)
             }
         } catch (e: Exception) {
-            // ჩამოტვირთვა ვერ დაიწყო — არაფერს ვაკეთებთ, მომხმარებელი მენიუდან თავიდან სცდის
+            Toast.makeText(a, Lang.str(a, "updateFailed") + " " + (e.message ?: "?"), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -184,9 +192,11 @@ object AppUpdate {
                 .setDataAndType(uri, "application/vnd.android.package-archive")
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            a.startActivity(intent)
+            // ჩამოტვირთვის დასრულებისას Activity შეიძლება უკვე დახურული იყოს —
+            // applicationContext-ით ვიწყებთ, რომ არ იქრეშოს
+            a.applicationContext.startActivity(intent)
         } catch (e: Exception) {
-            // ინსტალაცია ვერ გაიხსნა — APK Downloads/MyNote-შია, ხელითაც დააყენებს
+            Toast.makeText(a, Lang.str(a, "updateFailed") + " " + (e.message ?: "?"), Toast.LENGTH_LONG).show()
         }
     }
 }
