@@ -29,7 +29,7 @@ import android.widget.Toast
 object AppUpdate {
 
     // 👇 შეცვალე შენი version.json-ის raw ბმულით
-    const val VERSION_URL = "https://raw.githubusercontent.com/gairlink/MyNote/main/version.json"
+    const val VERSION_URL = "https://raw.githubusercontent.com/gairlink/MyNote/main/app/version.json"
 
     private const val PREF_LAST_CHECK = "lastUpdateCheck"
     private var downloadId: Long = -1L
