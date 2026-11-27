@@ -131,11 +131,19 @@ object SettingsPage {
 
     private fun showSimpleDialog(a: MainActivity, title: String, message: String) {
         UiDialog.show(a, title) { box, dialog ->
+            // გრძელი ტექსტი (კონფიდენციალურობა) ScrollView-შია — დიალოგი ეკრანს არ გასცდება,
+            // ტექსტი კი ბოლომდე ისქროლება
+            val scroll = ScrollView(a)
+            scroll.layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                UiHelpers.dp(a, 420)
+            )
             val msg = TextView(a)
             msg.text = message
             msg.textSize = 16f
             msg.setTextColor(Color.parseColor(Theme.text(a)))
-            box.addView(msg)
+            scroll.addView(msg)
+            box.addView(scroll)
         }
     }
 
@@ -251,7 +259,7 @@ object SettingsPage {
         topBar.orientation = LinearLayout.HORIZONTAL
         topBar.gravity = Gravity.CENTER_VERTICAL
         topBar.setPadding(UiHelpers.dp(a, 16), UiHelpers.dp(a, 16), UiHelpers.dp(a, 16), UiHelpers.dp(a, 16))
-        val back = Icons.backButton(a) { a.showHomePage() }
+        val back = Icons.backButton(a) { a.handleBack() }
         topBar.addView(back)
         val head = TextView(a)
         head.text = Lang.str(a, "settings")
@@ -327,6 +335,8 @@ object SettingsPage {
         val notif = prefs(a).getBoolean("notif", true)
         val notifRow = row(a, "🔔", Lang.str(a, "notif"), toggleView(a, notif) {
             prefs(a).edit().putBoolean("notif", !notif).apply()
+            // ჩართვისას სისტემურ ნებართვასაც ვითხოვთ — თორემ შეტყობინება არ გამოჩნდება
+            if (!notif) a.askNotifPermission(force = true)
             show(a)
         }, null)
         card1.addView(notifRow)

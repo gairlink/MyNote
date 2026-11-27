@@ -265,7 +265,8 @@ object EditorPage {
                 a.notes.add(newNote)
             } else if (note != null) {
                 note.title = title
-                if (note.createdAt == 0L) note.createdAt = System.currentTimeMillis()
+                // createdAt-ს აქ არ ვიგონებთ — თუ 0-ია, ჩატვირთვისას უკვე აღდგა
+                // ჩანაწერის საკუთარი თარიღიდან; თუ ვერ აღდგა, ჩვენება იმ თარიღს აჩვენებს
                 note.updatedAt = System.currentTimeMillis()
                 if (type == "text") note.text = textEt?.text?.toString() ?: note.text
                 note.noteType = type

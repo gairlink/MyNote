@@ -63,11 +63,13 @@ class MainActivity : Activity() {
         // პაროლი აღარ გამოიყენება პროგრამაში შესასვლელად — აპი იხსნება პირდაპირ
         showHomePage()
         // Google Drive: თუ შესულია, გახსნაზე თავისით სინქრონიზაცია
+        // ჩუმი სინქრონი — ეკრანს არ ვეხებით: თუ Drive-ში უფრო ახალია,
+        // applySyncedData თავისით განაახლებს იმ გვერდს, სადაც ხარ
         if (DriveSync.isSignedIn(this)) {
-            DriveSync.sync(this) { ok ->
-                if (ok) showHomePage()
-            }
+            DriveSync.sync(this) { }
         }
+        // შეტყობინების ნებართვა (Android 13+) — პირველ გახსნაზე ვითხოვთ
+        askNotifPermission()
         // განახლების შემოწმება (დღეში ერთხელ, ჩუმად — დიალოგი მხოლოდ თუ განახლებაა)
         AppUpdate.check(this)
     }
@@ -76,6 +78,29 @@ class MainActivity : Activity() {
         super.onResume()
         // პარამეტრებიდან („უცნობი წყაროები") დაბრუნებისას განახლების ჩამოტვირთვა გრძელდება
         AppUpdate.onResume(this)
+    }
+
+    // შეტყობინების სისტემური ნებართვა (Android 13+).
+    // მანიფესტში დეკლარირება საკმარისი არაა — დიალოგს კოდმა უნდა ითხოვოს,
+    // თორემ შეხსენებები ჩუმად იკარგება: მაღვიძარა გაისვრის, შეტყობინება კი არ გამოჩნდება.
+    // force = true — მომხმარებლის აშკარა მოქმედებისას (პარამეტრებში ჩართვა, შეხსენების დაყენება)
+    fun askNotifPermission(force: Boolean = false) {
+        if (android.os.Build.VERSION.SDK_INT < 33) return
+        if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        val p = getSharedPreferences("mynote", MODE_PRIVATE)
+        if (!force && p.getBoolean("notifPermAsked", false)) return
+        // ორჯერ უარი = სამუდამო უარი: Android დიალოგს აღარ აჩვენებს,
+        // ამიტომ ვხსნით აპის სისტემურ პარამეტრებს, სადაც ხელით ირთვება
+        if (p.getBoolean("notifPermAsked", false) && !shouldShowRequestPermissionRationale(android.Manifest.permission.POST_NOTIFICATIONS)) {
+            try {
+                val i = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                i.data = android.net.Uri.parse("package:" + packageName)
+                startActivity(i)
+            } catch (e: Exception) { }
+            return
+        }
+        p.edit().putBoolean("notifPermAsked", true).apply()
+        requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
     }
 
     // Google-ში შესვლის / ნებართვის დადასტურების შედეგი
@@ -239,8 +264,16 @@ class MainActivity : Activity() {
             "fontsize" -> FontSizePage.show(this)
             "view" -> {
                 val n = currentNote
-                if (n != null) ViewPage.show(this, n) else HomePage.show(this)
+                // სინქრონის მერე ჩატვირთული სიიდან ვიღებთ ახალ ვერსიას,
+                // რომ ნანახი ჩანაწერი განახლებული ჩანდეს
+                val fresh = n?.let { note -> notes.find { it.id == note.id } }
+                if (fresh != null) {
+                    currentNote = fresh
+                    ViewPage.show(this, fresh)
+                } else HomePage.show(this)
             }
+            // ჩუმი სინქრონი რედაქტირებას არ წყვეტს — მომხმარებელი რედაქტორში რჩება
+            "editor" -> { }
             else -> HomePage.show(this)
         }
     }
@@ -443,6 +476,13 @@ class MainActivity : Activity() {
         DriveSync.uploadIfNeeded(this)
     }
 
+    // "yyyy-MM-dd" -> millis (00:00). ვერ გაიშიფრა -> 0L
+    private fun dateStringToMillis(date: String): Long {
+        return try {
+            java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).parse(date)?.time ?: 0L
+        } catch (e: Exception) { 0L }
+    }
+
     private fun loadNotes() {
         val p = getSharedPreferences("mynote", MODE_PRIVATE)
         nextId = p.getInt("nextId", 1)
@@ -477,6 +517,15 @@ class MainActivity : Activity() {
                         if (a.size >= 11) a[10].toBoolean() else false,
                         if (a.size >= 12) a[11].toBoolean() else false
                     )
+                    // ძველი ჩანაწერები, რომლებსაც შექმნის/რედაქტირების დრო არ აქვთ:
+                    // ვაღდგენთ ჩანაწერის საკუთარი კალენდრის თარიღიდან, რომ სინქრონის
+                    // მერე „დღევანდელი" (ჩამოტვირთვის) თარიღი არ გამოჩნდეს
+                    if (note.createdAt == 0L) {
+                        note.createdAt = dateStringToMillis(note.date)
+                    }
+                    if (note.updatedAt == 0L) {
+                        note.updatedAt = note.createdAt
+                    }
                     notes.add(note)
                 }
               } catch (e: Exception) { /* დაზიანებული ხაზი გამოტოვებულია, აპი არ ეცემა */ }

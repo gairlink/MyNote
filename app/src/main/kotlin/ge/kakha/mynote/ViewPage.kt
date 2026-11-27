@@ -474,6 +474,7 @@ object ViewPage {
                     target.add(Calendar.DAY_OF_MONTH, 1)
                 }
                 if (!a.getSharedPreferences("mynote", 0).getBoolean("notif", true)) { Toast.makeText(a, Lang.str(a, "notifOffMsg"), Toast.LENGTH_SHORT).show() }
+                else a.askNotifPermission(force = true) // შეხსენების დაყენებისას სისტემურ ნებართვას ვითხოვთ, თორემ შეტყობინება ჩუმად დაიკარგება
                 val prefs = a.getSharedPreferences("mynote", 0)
                 val key = "reminder_" + note.id
                 val bodyText = if (note.noteType == "checklist") note.checklist.joinToString(", ") { it.text } else note.text
