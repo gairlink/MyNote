@@ -362,12 +362,6 @@ object SettingsPage {
             askPin(a, Lang.str(a, "changePass"), true)
         }
         card2.addView(changeRow)
-        card2.addView(divider(a))
-
-        val accRow = row(a, "👤", Lang.str(a, "account"), chevronView(a)) {
-            showSimpleDialog(a, Lang.str(a, "account"), Lang.str(a, "accountMsg"))
-        }
-        card2.addView(accRow)
         box.addView(card2)
 
         val card3 = card(a)
