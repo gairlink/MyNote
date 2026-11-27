@@ -1,11 +1,15 @@
 package ge.kakha.mynote
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.os.Build
 import android.view.Gravity
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -266,13 +270,200 @@ object MenuPage {
             }
         }
         menuRow(Pictograms.settings, Lang.str(a, "settings")) { a.showSettings() }
-        menuRow(Pictograms.widget, Lang.str(a, "widget"), Lang.str(a, "widgetInfo")) {
-            UiDialog.show(a, Lang.str(a, "widget")) { box, _ ->
-                val msg = TextView(a)
-                msg.text = Lang.str(a, "widgetInfo")
-                msg.textSize = 16f
-                msg.setTextColor(Color.BLACK)
-                box.addView(msg)
+                                                // ნოუტების არჩევა კონკრეტული ვიჯეტისთვის:
+                // ორივე ზომა — ერთი ნოუტი (რადიო).
+                fun showNotePicker(a: MainActivity, kind: String, titleKey: String) {
+                    val notes = WidgetNotes.load(a)
+                    UiDialog.show(a, Lang.str(a, titleKey)) { box2, dialog2 ->
+                        val hint = TextView(a)
+                        hint.text = Lang.str(a, "widgetPickNotes")
+                        hint.textSize = 15f
+                        hint.setTextColor(Color.parseColor(Theme.text(a)))
+                        hint.setPadding(0, 0, 0, UiHelpers.dp(a, 8))
+                        box2.addView(hint)
+
+                        if (notes.isEmpty()) {
+                            val empty = TextView(a)
+                            empty.text = Lang.str(a, "widgetEmpty")
+                            empty.textSize = 16f
+                            empty.setTextColor(Color.parseColor(Theme.text(a)))
+                            box2.addView(empty)
+                            return@show
+                        }
+
+                        val picked = mutableSetOf<Int>()
+                        val noteBox = LinearLayout(a)
+                        noteBox.orientation = LinearLayout.VERTICAL
+                        val scroll2 = ScrollView(a)
+                        scroll2.layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            UiHelpers.dp(a, 380)
+                        )
+                        scroll2.addView(noteBox)
+                        box2.addView(scroll2)
+
+                        lateinit var installBtn2: android.view.View
+                        fun refreshInstallBtn2() {
+                            installBtn2.isEnabled = picked.isNotEmpty()
+                            installBtn2.alpha = if (picked.isNotEmpty()) 1f else 0.4f
+                        }
+
+
+                        fun rebuildRows() {
+                            noteBox.removeAllViews()
+                            for (n in notes) {
+                                val on = picked.contains(n.id)
+                                // ნოუტი ჩვეულებრივი ბარათით, როგორც HomePage-ში და ვიჯეტში:
+                                // ფერმკრთალი ფონი + კატეგორიის ზოლი მარცხნივ, შიგნით მხოლოდ სათაური.
+                                val cat = WidgetNotes.catColor(a, n.folder)
+                                val row = LinearLayout(a)
+                                row.orientation = LinearLayout.HORIZONTAL
+                                row.gravity = Gravity.CENTER_VERTICAL
+                                val cardBg = GradientDrawable()
+                                cardBg.shape = GradientDrawable.RECTANGLE
+                                cardBg.cornerRadius = UiHelpers.dp(a, 22).toFloat()
+                                cardBg.setColor(WidgetNotes.paleColor(cat))
+                                if (on) cardBg.setStroke(UiHelpers.dp(a, 3), Color.parseColor("#7A6FF0"))
+                                row.background = cardBg
+                                val rp = LinearLayout.LayoutParams(
+                                    LinearLayout.LayoutParams.MATCH_PARENT,
+                                    UiHelpers.dp(a, 64)
+                                )
+                                rp.topMargin = UiHelpers.dp(a, 6)
+                                rp.bottomMargin = UiHelpers.dp(a, 6)
+                                row.layoutParams = rp
+                                val stripe = android.view.View(a)
+                                val r = UiHelpers.dp(a, 22).toFloat()
+                                val stripeBg = GradientDrawable()
+                                stripeBg.shape = GradientDrawable.RECTANGLE
+                                stripeBg.cornerRadii = floatArrayOf(r, r, 0f, 0f, 0f, 0f, r, r)
+                                stripeBg.setColor(cat)
+                                stripe.background = stripeBg
+                                stripe.layoutParams = LinearLayout.LayoutParams(
+                                    UiHelpers.dp(a, 14),
+                                    LinearLayout.LayoutParams.MATCH_PARENT
+                                )
+                                row.addView(stripe)
+
+                                val title = TextView(a)
+                                val raw = if (n.title.isNotBlank()) n.title
+                                    else WidgetNotes.preview(a, n).lineSequence().firstOrNull() ?: ""
+                                title.text = raw
+                                title.textSize = 18f
+                                title.setTypeface(null, Typeface.BOLD)
+                                title.setTextColor(Color.parseColor(Theme.text(a)))
+                                title.maxLines = 1
+                                title.ellipsize = android.text.TextUtils.TruncateAt.END
+                                val tp = LinearLayout.LayoutParams(
+                                    LinearLayout.LayoutParams.MATCH_PARENT,
+                                    LinearLayout.LayoutParams.WRAP_CONTENT
+                                )
+                                tp.leftMargin = UiHelpers.dp(a, 16)
+                                tp.rightMargin = UiHelpers.dp(a, 12)
+                                title.layoutParams = tp
+                                row.addView(title)
+                                row.setOnClickListener {
+                                    // ორივე ზომა — ერთი ნოუტი
+                                    picked.clear()
+                                    if (!on) picked.add(n.id)
+                                    rebuildRows()
+                                    refreshInstallBtn2()
+                                }
+                                noteBox.addView(row)
+                            }
+                        }
+                        rebuildRows()
+
+                        installBtn2 = UiDialog.actionButton(a, Lang.str(a, "widgetInstall")) {
+                            WidgetNotes.savePending(a, kind, picked.toList())
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                val awm = AppWidgetManager.getInstance(a)
+                                val provider = if (kind == "wide") NoteSingleWideWidgetProvider::class.java
+                                    else NoteSingleWidgetProvider::class.java
+                                awm.requestPinAppWidget(ComponentName(a, provider), null, null)
+                            }
+                            dialog2.dismiss()
+                        }
+                        refreshInstallBtn2()
+                        box2.addView(installBtn2)
+                    }
+                }
+
+menuRow(Pictograms.widget, Lang.str(a, "widget")) {
+            UiDialog.show(a, Lang.str(a, "widget")) { box, dialog ->
+                // 1. ჯერ ზომა აირჩევა (სურათზე დაჭერით) — 6×2 ან 3×3,
+                // 2. მერე ნოუტი — რომელი ერთი ნოუტი ჩანდეს ამ ვიჯეტში.
+                val scroll = ScrollView(a)
+                scroll.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    UiHelpers.dp(a, 420)
+                )
+                val inner = LinearLayout(a)
+                inner.orientation = LinearLayout.VERTICAL
+                scroll.addView(inner)
+
+                fun previewImage(res: Int, kind: String, titleKey: String, widthFraction: Float): android.view.View {
+                    val img = ImageView(a)
+                    img.setImageResource(res)
+                    // FIT_CENTER არასდროს წელავს სურათს — პროპორციას ინარჩუნებს
+                    img.scaleType = ImageView.ScaleType.FIT_CENTER
+                    img.adjustViewBounds = true
+                    img.setPadding(0, UiHelpers.dp(a, 4), 0, UiHelpers.dp(a, 8))
+                    img.setOnClickListener {
+                        dialog.dismiss()
+                        showNotePicker(a, kind, titleKey)
+                    }
+                    // სიმაღლე სურათის პროპორციაზე — სქროლში adjustViewBounds რომ შეცდეს, ეგ ასწორებს
+                    img.post {
+                        val d = img.drawable ?: return@post
+                        val iw = d.intrinsicWidth
+                        val ih = d.intrinsicHeight
+                        if (iw > 0 && ih > 0 && img.width > 0) {
+                            val h = img.width * ih / iw
+                            val lp = img.layoutParams
+                            if (lp.height != h) {
+                                lp.height = h
+                                img.layoutParams = lp
+                            }
+                        }
+                    }
+                    if (widthFraction >= 1f) {
+                        img.layoutParams = LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.MATCH_PARENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
+                        return img
+                    }
+                    // ვიწრო ვიჯეტი (3 უჯრედი) ფართოს (6 უჯრედი) ნახევარი სიგანისაა —
+                    // პრევიუ ცენტრში, ნახევარ სიგანეზე, რომ რეალური პროპორცია ჩანდეს
+                    val wrap = LinearLayout(a)
+                    wrap.orientation = LinearLayout.HORIZONTAL
+                    wrap.gravity = Gravity.CENTER_HORIZONTAL
+                    wrap.layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    )
+                    val side = (1f - widthFraction) / 2f
+                    val left = android.view.View(a)
+                    left.layoutParams = LinearLayout.LayoutParams(0, 1, side)
+                    wrap.addView(left)
+                    img.layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, widthFraction)
+                    wrap.addView(img)
+                    val right = android.view.View(a)
+                    right.layoutParams = LinearLayout.LayoutParams(0, 1, side)
+                    wrap.addView(right)
+                    return wrap
+                }
+
+                inner.addView(previewImage(R.drawable.widget_preview_single, "single", "widgetAddSingle", 1f))
+                val spacer = LinearLayout(a)
+                spacer.layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    UiHelpers.dp(a, 16)
+                )
+                inner.addView(spacer)
+                inner.addView(previewImage(R.drawable.widget_preview_single_wide, "wide", "widgetAddSingle", 0.5f))
+                box.addView(scroll)
             }
         }
         // განახლების შემოწმება (ხელით)
@@ -294,5 +485,24 @@ object MenuPage {
         frame.addView(outer)
         a.setContentView(frame)
         a.currentScreen = "menu"
+    }
+
+    // ვიჯეტის დამატება მენიუდან — სისტემა თავით აჩვენებს დადასტურების ფანჯარას,
+    // დადასტურებისთანავე ვიჯეტი მთავარ ეკრანზე იდება.
+    private fun pinWidget(a: MainActivity, provider: Class<*>) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            Toast.makeText(a, Lang.str(a, "widgetPinNotSupported"), Toast.LENGTH_LONG).show()
+            return
+        }
+        val mgr = AppWidgetManager.getInstance(a)
+        if (!mgr.isRequestPinAppWidgetSupported()) {
+            Toast.makeText(a, Lang.str(a, "widgetPinNotSupported"), Toast.LENGTH_LONG).show()
+            return
+        }
+        try {
+            mgr.requestPinAppWidget(ComponentName(a, provider), null, null)
+        } catch (e: Exception) {
+            Toast.makeText(a, Lang.str(a, "widgetPinNotSupported"), Toast.LENGTH_LONG).show()
+        }
     }
 }

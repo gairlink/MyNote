@@ -325,7 +325,7 @@ object HomePage {
             topRow.gravity = Gravity.CENTER_VERTICAL
             val titleTv = TextView(a)
             titleTv.text = if (a.isNoteLocked(n.id)) n.title + "  " + Pictograms.lock + "" else n.title
-            titleTv.textSize = 19f
+            titleTv.textSize = 17.1f
             titleTv.setTypeface(null, Typeface.BOLD)
             titleTv.setTextColor(Color.BLACK)
             val titleParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -350,7 +350,7 @@ object HomePage {
                 "პირადი" -> Lang.str(a, "personal")
                 else -> n.folder }
             meta.text = "" + Pictograms.tag + "  " + folderName + "  •  " + n.date
-            meta.textSize = 13f
+            meta.textSize = 11.7f
             meta.setTextColor(Color.parseColor("#444444"))
             meta.setPadding(0, UiHelpers.dp(a, 4), 0, UiHelpers.dp(a, 4))
             row.addView(meta)
@@ -365,7 +365,7 @@ object HomePage {
             } else {
                 n.text
             }
-            preview.textSize = 15f
+            preview.textSize = 13.5f
             preview.setTextColor(Color.BLACK)
             preview.maxLines = 3
             row.addView(preview)

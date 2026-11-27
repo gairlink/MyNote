@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- ერთი ნოუტი 6x2 — ფართე, დაბალი, ჩარჩოს გარეშე -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
-    android:minWidth="180dp"
+    android:minWidth="390dp"
     android:minHeight="110dp"
+    android:targetCellWidth="6"
+    android:targetCellHeight="2"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_single"
+    android:previewImage="@drawable/widget_preview_single"
     android:resizeMode="horizontal|vertical"
-    android:widgetCategory="home_screen" />
+    android:widgetCategory="home_screen"
+    android:configure="ge.kakha.mynote.WidgetConfigActivity" />

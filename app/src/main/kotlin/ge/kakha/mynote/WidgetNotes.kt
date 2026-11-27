@@ -2,6 +2,14 @@ package ge.kakha.mynote
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Typeface
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 object WidgetNotes {
     // ვიჯეტისთვის აქტიური ნოუტები: არქივი და წაშლილი არ ჩანს.
@@ -52,6 +60,39 @@ object WidgetNotes {
         return out
     }
 
+    // კონკრეტული ვიჯეტისთვის არჩეული ნოუტები:
+    // "widgetNotes_<widgetId>" = ნოუტების id-ები მძიმით, არჩეული თანმიმდევრობით.
+    // თუ ვიჯეტს არჩევანი არ აქვს — ჩვეულებრივი წესი (სია: ბოლო 4, ერთი: ბოლო 1).
+    // "widgetPending_<kind>" = მენიუდან არჩეული ნოუტები, სანამ ვიჯეტი დაემატება —
+    // ახალ ვიჯეტს პირველ განახლებაზე მიებმება და იშლება.
+    fun savePending(context: Context, kind: String, ids: List<Int>) {
+        context.getSharedPreferences("mynote", Context.MODE_PRIVATE).edit()
+            .putString("widgetPending_" + kind, ids.joinToString(",")).apply()
+    }
+
+    fun notesForWidget(context: Context, widgetId: Int, kind: String): List<Note> {
+        val p = context.getSharedPreferences("mynote", Context.MODE_PRIVATE)
+        var saved = p.getString("widgetNotes_" + widgetId, null)
+        if (saved == null) {
+            val pending = p.getString("widgetPending_" + kind, null)
+            if (!pending.isNullOrBlank()) {
+                saved = pending
+                p.edit().putString("widgetNotes_" + widgetId, pending)
+                    .remove("widgetPending_" + kind).apply()
+            }
+        }
+        val all = load(context)
+        if (saved.isNullOrBlank()) return all
+        val wanted = saved.split(",").mapNotNull { it.toIntOrNull() }
+        val byId = all.associateBy { it.id }
+        return wanted.mapNotNull { byId[it] }
+    }
+
+    fun clearWidget(context: Context, widgetId: Int) {
+        context.getSharedPreferences("mynote", Context.MODE_PRIVATE).edit()
+            .remove("widgetNotes_" + widgetId).apply()
+    }
+
     fun lockedIds(context: Context): Set<String> {
         return context.getSharedPreferences("mynote", Context.MODE_PRIVATE)
             .getStringSet("lockedNotes", emptySet()) ?: emptySet()
@@ -93,6 +134,54 @@ object WidgetNotes {
             return Lang.strCtx(context, "checklist") + " • " + done + "/" + total
         }
         return n.text
+    }
+
+    // გახსნილი ნოუტის სრული შიგთავსი — ერთიანი ვიჯეტისთვის, გახსნილის დიზაინით:
+    // ტექსტი — მთლიანი ტექსტი,
+    // ჩექლისტი — ჯერ პროგრესი „☑ შესრულებული / სულ“ (იისფერი, მსხვილი),
+    // მერე ყველა პუნქტი ☑/☐-ით, დაბლოკილი — ••••••••
+    fun openedText(context: Context, n: Note): CharSequence {
+        if (lockedIds(context).contains(n.id.toString())) return "••••••••"
+        if (n.noteType == "checklist") {
+            val done = n.checklist.count { it.done }
+            val head = "☑ " + done + " / " + n.checklist.size
+            val sb = StringBuilder(head)
+            for (item in n.checklist) {
+                sb.append("\n").append((if (item.done) "☑ " else "☐ ") + item.text)
+            }
+            val span = SpannableStringBuilder(sb.toString())
+            span.setSpan(ForegroundColorSpan(Color.parseColor("#7A6FF0")), 0, head.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            span.setSpan(StyleSpan(Typeface.BOLD), 0, head.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            return span
+        }
+        return n.text
+    }
+
+    // გახსნილი ნოუტის მეტა — „🏷️ კატეგორია • დღეს“ (ბოლო ცვლილება აღარ ჩანს)
+    fun openedMeta(context: Context, n: Note): String {
+        val datePart = try {
+            val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+            if (n.date == today) Lang.strCtx(context, "today") else n.date
+        } catch (e: Exception) { n.date }
+        return "🏷️  " + folderName(context, n.folder) + "  •  " + datePart
+    }
+
+    // ბოლო ცვლილების დრო — შენახული ხაზის მე-10 ველი (a[9]), თუ 0 — შექმნის დრო (a[8]).
+    fun lastChangeMillis(context: Context, noteId: Int): Long {
+        try {
+            val p = context.getSharedPreferences("mynote", Context.MODE_PRIVATE)
+            val saved = p.getString("notes", "") ?: ""
+            for (l in saved.lines()) {
+                if (l.isBlank()) continue
+                val a = l.split("|")
+                if (a.size >= 10 && (a[0].toIntOrNull() ?: -1) == noteId) {
+                    val updated = a[9].toLongOrNull() ?: 0L
+                    if (updated > 0) return updated
+                    return a[8].toLongOrNull() ?: 0L
+                }
+            }
+        } catch (e: Exception) { }
+        return 0L
     }
 
     // MainActivity-ის decFieldSafe-ის ანალოგი — ვიჯეტს MainActivity არ აქვს

@@ -34,21 +34,10 @@
             </intent-filter>
         </activity>
 
-        <!-- ვიჯეტი: სია — ბოლო 4 ნოუტი -->
-        <receiver
-            android:name=".NoteListWidgetProvider"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/widget_list_info" />
-        </receiver>
-
-        <!-- ვიჯეტი: ერთი — ბოლო ნოუტი -->
+        <!-- ვიჯეტი: ერთი ნოუტი 6×2 — ფართე, დაბალი, ჩარჩოს გარეშე -->
         <receiver
             android:name=".NoteSingleWidgetProvider"
+            android:label="MyNote 6×2"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -57,6 +46,28 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_single_info" />
         </receiver>
+
+        <!-- ვიჯეტი: ერთი ნოუტი 3×3 — კვადრატი, ჩარჩოს გარეშე -->
+        <receiver
+            android:name=".NoteSingleWideWidgetProvider"
+            android:label="MyNote 3×3"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_single_wide_info" />
+        </receiver>
+
+        <!-- ვიჯეტის კონფიგურაცია: ნოუტის არჩევა ვიჯეტის დამატებისას -->
+        <activity
+            android:name=".WidgetConfigActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
 
         <!-- შეხსენება -->
         <receiver
