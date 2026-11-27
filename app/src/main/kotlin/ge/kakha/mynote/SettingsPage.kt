@@ -195,8 +195,8 @@ object SettingsPage {
     }
 
     private fun showLanguagePicker(a: MainActivity) {
-        val names = arrayOf("ქართული", "English", "Italiano", "Русский")
-        val codes = arrayOf("ka", "en", "it", "ru")
+        val names = arrayOf("ქართული", "English", "Italiano", "Русский", "Türkçe")
+        val codes = arrayOf("ka", "en", "it", "ru", "tr")
         val currentCode = Lang.code(a)
         val currentIndex = codes.indexOf(currentCode).coerceAtLeast(0)
         showPicker(a, Lang.str(a, "pickLang"), names, names[currentIndex]) { picked ->
@@ -301,6 +301,7 @@ object SettingsPage {
             "en" -> "English"
             "it" -> "Italiano"
             "ru" -> "Русский"
+            "tr" -> "Türkçe"
             else -> "ქართული"
         }
         val langRow = row(a, "🌐", Lang.str(a, "language"), valueView(a, langName)) { showLanguagePicker(a) }
