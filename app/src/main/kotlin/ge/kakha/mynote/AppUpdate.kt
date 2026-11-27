@@ -12,24 +12,21 @@ import android.provider.Settings
 import android.widget.Toast
 
 // ---- აპის განახლება (Play Store-ის გარეშე) ----
-// როგორ მუშაობს:
-// 1) აპი გაშვებისას (დღეში ერთხელ) კითხულობს VERSION_URL-ზე მდებარე version.json-ს.
+// როგორ მუშაობს (version.json-ის გარეშე):
+// 1) აპი გაშვებისას (დღეში ერთხელ) კითხულობს GitHub-ზე მდებარე module.toml-ს.
 // 2) თუ იქ versionCode დაყენებულზე მეტია — დიალოგი: „განახლება ხელმისაწვდომია".
-// 3) დადასტურებისას APK იტვირთება DownloadManager-ით და ინსტალაცია იწყება.
+// 3) დადასტურებისას APK (ყოველთვის app-debug.apk, რეპოს ძირში) ჩუმად იწერება
+//    აპის პირად საქაღალდეში და ინსტალაცია იწყება. ძველი ფაილი თავისით იშლება.
 //
-// შენი მხრიდან საჭიროა (ერთხელ):
-// - GitHub-ზე რეპო, სადაც დევს version.json და APK (Release-ში).
-// - ქვემოთ VERSION_URL-ში ჩასვი შენი version.json-ის raw ბმული.
-// version.json-ის სახე:
-//   { "versionCode": 13, "versionName": "1.3",
-//     "apkUrl": "https://github.com/შენი-სახელი/MyNote/releases/download/v1.3/mynote.apk",
-//     "notes": "ახალი: ..." }
 // ყოველ ახალ ვერსიაზე: versionCode +1 (module.toml-ში) -> Build APK ->
-// APK ატვირთე GitHub Release-ში -> version.json განაახლე (versionCode + apkUrl).
+// APK ატვირთე GitHub-ზე (app-debug.apk-ზე გადაწერა) -> Push (module.toml თავისით მიდის).
 object AppUpdate {
 
-    // 👇 შეცვალე შენი version.json-ის raw ბმულით
-    const val VERSION_URL = "https://raw.githubusercontent.com/gairlink/MyNote/main/app/version.json"
+    // ვერსიას პირდაპირ module.toml-დან ვკითხულობთ — ცალკე version.json აღარაა საჭირო.
+    // module.toml CodeAssist-ის Push-ით თავისით მიდის GitHub-ზე, ამიტომ ვერსია სულ ერთ ადგილას წერია.
+    const val MODULE_TOML_URL = "https://raw.githubusercontent.com/gairlink/MyNote/main/app/module.toml"
+    // APK ყოველთვის app-debug.apk-ა (CodeAssist რასაც აშენებს) — ამიტომ ბმული ფიქსირებულია
+    const val APK_URL = "https://raw.githubusercontent.com/gairlink/MyNote/main/app-debug.apk"
 
     private const val PREF_LAST_CHECK = "lastUpdateCheck"
     private var downloadId: Long = -1L
@@ -66,16 +63,23 @@ object AppUpdate {
             val last = a.getSharedPreferences("mynote", 0).getLong(PREF_LAST_CHECK, 0L)
             if (System.currentTimeMillis() - last < 24L * 60 * 60 * 1000) return
         }
+        // ძველი განახლების ფაილი არ რჩება — ყოველი შემოწმებისას ვშლით,
+        // რომ ტელეფონი არ გაივსოს (ახალი ჩამოტვირთვა ისევ იმავე სახელით მოდის)
+        try {
+            val old = java.io.File(a.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "mynote-update.apk")
+            if (old.exists()) old.delete()
+        } catch (e: Exception) { }
         Thread {
             try {
-                val conn = java.net.URL(VERSION_URL).openConnection() as java.net.HttpURLConnection
+                val conn = java.net.URL(MODULE_TOML_URL + "?t=" + System.currentTimeMillis()).openConnection() as java.net.HttpURLConnection
                 conn.connectTimeout = 8000
                 conn.readTimeout = 8000
                 val text = conn.inputStream.bufferedReader().readText()
                 conn.disconnect()
-                val remoteCode = Regex("\"versionCode\"\\s*:\\s*(\\d+)").find(text)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
-                val apkUrl = Regex("\"apkUrl\"\\s*:\\s*\"([^\"]+)\"").find(text)?.groupValues?.get(1) ?: ""
-                val notes = Regex("\"notes\"\\s*:\\s*\"([^\"]*)\"").find(text)?.groupValues?.get(1) ?: ""
+                // module.toml-ში: versionCode = 4  (შეიძლება იყოს ბრჭყალებითაც: "4")
+                val remoteCode = Regex("versionCode\\s*=\\s*\"?([0-9]+)\"?").find(text)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+                val apkUrl = APK_URL
+                val notes = ""
                 a.runOnUiThread {
                     a.getSharedPreferences("mynote", 0).edit().putLong(PREF_LAST_CHECK, System.currentTimeMillis()).apply()
                     if (remoteCode > installedVersion(a) && apkUrl.isNotEmpty()) {
@@ -85,10 +89,11 @@ object AppUpdate {
                     }
                 }
             } catch (e: Exception) {
-                // ინტერნეტი არაა / ბმული არასწორია — ჩუმად ვტოვებთ, აპი არ ეცემა
+                // ხელით შემოწმებისას შეცდომა აღარ იმალება „უახლესია"-ს უკან —
+                // რეალურ მიზეზს ვაჩვენებთ, თორემ ვერასდროს გავიგებთ, რა გაფუჭდა
                 if (!silent) {
                     a.runOnUiThread {
-                        Toast.makeText(a, Lang.str(a, "upToDate"), Toast.LENGTH_SHORT).show()
+                        Toast.makeText(a, Lang.str(a, "updateCheckError") + " " + (e.message ?: "?"), Toast.LENGTH_LONG).show()
                     }
                 }
             }
@@ -122,8 +127,8 @@ object AppUpdate {
             val req = DownloadManager.Request(Uri.parse(apkUrl))
                 .setTitle("MyNote")
                 .setDescription(Lang.str(a, "downloadingUpdate"))
-                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "MyNote/mynote-update.apk")
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+                .setDestinationInExternalFilesDir(a, Environment.DIRECTORY_DOWNLOADS, "mynote-update.apk")
                 .setMimeType("application/vnd.android.package-archive")
                 .setAllowedOverMetered(true)
             downloadId = dm.enqueue(req)
